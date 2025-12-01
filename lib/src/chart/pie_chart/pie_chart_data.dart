@@ -132,6 +132,124 @@ class PieChartData extends BaseChartData with EquatableMixin {
       ];
 }
 
+/// Configuration for external labels with leader lines
+class ExternalLabelConfig with EquatableMixin {
+  /// Creates an external label configuration
+  const ExternalLabelConfig({
+    this.enabled = false,
+    this.labelDistance = 30.0,
+    this.leaderLineColor,
+    this.leaderLineWidth = 1.0,
+    this.leaderLineLength = 20.0,
+    this.leaderLineStyle = LeaderLineStyle.elbow,
+    this.horizontalLineLength = 15.0,
+    this.curveControlPoint1 = 0.5,
+    this.curveControlPoint2 = 0.3,
+  });
+
+  /// Whether to show external label with leader line
+  final bool enabled;
+
+  /// Distance from pie edge to label
+  final double labelDistance;
+
+  /// Color of the leader line (defaults to section color if null)
+  final Color? leaderLineColor;
+
+  /// Width of the leader line
+  final double leaderLineWidth;
+
+  /// Length of the leader line
+  final double leaderLineLength;
+
+  /// Style of the leader line
+  final LeaderLineStyle leaderLineStyle;
+
+  /// Length of the horizontal line segment (used with elbow style)
+  final double horizontalLineLength;
+
+  /// Control point 1 for curved line (multiplier of leaderLineLength)
+  /// Used to calculate the first control point position
+  final double curveControlPoint1;
+
+  /// Control point 2 for curved line (multiplier of leaderLineLength)
+  /// Used to calculate the second control point position
+  final double curveControlPoint2;
+
+  /// Copies current [ExternalLabelConfig] to a new [ExternalLabelConfig]
+  ExternalLabelConfig copyWith({
+    bool? enabled,
+    double? labelDistance,
+    Color? leaderLineColor,
+    double? leaderLineWidth,
+    double? leaderLineLength,
+    LeaderLineStyle? leaderLineStyle,
+    double? horizontalLineLength,
+    double? curveControlPoint1,
+    double? curveControlPoint2,
+  }) =>
+      ExternalLabelConfig(
+        enabled: enabled ?? this.enabled,
+        labelDistance: labelDistance ?? this.labelDistance,
+        leaderLineColor: leaderLineColor ?? this.leaderLineColor,
+        leaderLineWidth: leaderLineWidth ?? this.leaderLineWidth,
+        leaderLineLength: leaderLineLength ?? this.leaderLineLength,
+        leaderLineStyle: leaderLineStyle ?? this.leaderLineStyle,
+        horizontalLineLength: horizontalLineLength ?? this.horizontalLineLength,
+        curveControlPoint1: curveControlPoint1 ?? this.curveControlPoint1,
+        curveControlPoint2: curveControlPoint2 ?? this.curveControlPoint2,
+      );
+
+  /// Lerps between two [ExternalLabelConfig] based on [t]
+  static ExternalLabelConfig lerp(
+    ExternalLabelConfig a,
+    ExternalLabelConfig b,
+    double t,
+  ) =>
+      ExternalLabelConfig(
+        enabled: b.enabled,
+        labelDistance: lerpDouble(a.labelDistance, b.labelDistance, t) ?? 30.0,
+        leaderLineColor: Color.lerp(a.leaderLineColor, b.leaderLineColor, t),
+        leaderLineWidth:
+            lerpDouble(a.leaderLineWidth, b.leaderLineWidth, t) ?? 1.0,
+        leaderLineLength:
+            lerpDouble(a.leaderLineLength, b.leaderLineLength, t) ?? 20.0,
+        leaderLineStyle: b.leaderLineStyle,
+        horizontalLineLength:
+            lerpDouble(a.horizontalLineLength, b.horizontalLineLength, t) ??
+                15.0,
+        curveControlPoint1:
+            lerpDouble(a.curveControlPoint1, b.curveControlPoint1, t) ?? 0.5,
+        curveControlPoint2:
+            lerpDouble(a.curveControlPoint2, b.curveControlPoint2, t) ?? 0.3,
+      );
+
+  @override
+  List<Object?> get props => [
+        enabled,
+        labelDistance,
+        leaderLineColor,
+        leaderLineWidth,
+        leaderLineLength,
+        leaderLineStyle,
+        horizontalLineLength,
+        curveControlPoint1,
+        curveControlPoint2,
+      ];
+}
+
+/// Style options for leader lines
+enum LeaderLineStyle {
+  /// Straight line from pie edge to label
+  straight,
+
+  /// Curved line from pie edge to label
+  curved,
+
+  /// Line with horizontal segment at the end (like in the example image)
+  elbow,
+}
+
 /// Holds data related to drawing each [PieChart] section.
 class PieChartSectionData with EquatableMixin {
   /// [PieChart] draws section from right side of the circle (0 degrees),
@@ -153,6 +271,9 @@ class PieChartSectionData with EquatableMixin {
   /// by default it draws the widget at the middle of section, but you can change the
   /// [badgePositionPercentageOffset] to have your desire design,
   /// the value works the same way as [titlePositionPercentageOffset].
+  ///
+  /// If [externalLabel] is configured with enabled=true, it draws the label
+  /// outside the pie chart with a leader line pointing to the section.
   PieChartSectionData({
     double? value,
     Color? color,
@@ -165,6 +286,7 @@ class PieChartSectionData with EquatableMixin {
     this.badgeWidget,
     double? titlePositionPercentageOffset,
     double? badgePositionPercentageOffset,
+    ExternalLabelConfig? externalLabel,
   })  : value = value ?? 10,
         color = color ?? Colors.cyan,
         radius = radius ?? 40,
@@ -172,7 +294,8 @@ class PieChartSectionData with EquatableMixin {
         title = title ?? (value == null ? '' : value.toString()),
         borderSide = borderSide ?? const BorderSide(width: 0),
         titlePositionPercentageOffset = titlePositionPercentageOffset ?? 0.5,
-        badgePositionPercentageOffset = badgePositionPercentageOffset ?? 0.5;
+        badgePositionPercentageOffset = badgePositionPercentageOffset ?? 0.5,
+        externalLabel = externalLabel ?? const ExternalLabelConfig();
 
   /// It determines how much space it should occupy around the circle.
   ///
@@ -223,6 +346,9 @@ class PieChartSectionData with EquatableMixin {
   /// 1.0 means near the outside of the [PieChart].
   final double badgePositionPercentageOffset;
 
+  /// Configuration for external label with leader line
+  final ExternalLabelConfig externalLabel;
+
   /// Copies current [PieChartSectionData] to a new [PieChartSectionData],
   /// and replaces provided values.
   PieChartSectionData copyWith({
@@ -237,6 +363,7 @@ class PieChartSectionData with EquatableMixin {
     Widget? badgeWidget,
     double? titlePositionPercentageOffset,
     double? badgePositionPercentageOffset,
+    ExternalLabelConfig? externalLabel,
   }) =>
       PieChartSectionData(
         value: value ?? this.value,
@@ -252,6 +379,7 @@ class PieChartSectionData with EquatableMixin {
             titlePositionPercentageOffset ?? this.titlePositionPercentageOffset,
         badgePositionPercentageOffset:
             badgePositionPercentageOffset ?? this.badgePositionPercentageOffset,
+        externalLabel: externalLabel ?? this.externalLabel,
       );
 
   /// Lerps a [PieChartSectionData] based on [t] value, check [Tween.lerp].
@@ -280,6 +408,11 @@ class PieChartSectionData with EquatableMixin {
           b.badgePositionPercentageOffset,
           t,
         ),
+        externalLabel: ExternalLabelConfig.lerp(
+          a.externalLabel,
+          b.externalLabel,
+          t,
+        ),
       );
 
   /// Used for equality check, see [EquatableMixin].
@@ -296,6 +429,7 @@ class PieChartSectionData with EquatableMixin {
         badgeWidget,
         titlePositionPercentageOffset,
         badgePositionPercentageOffset,
+        externalLabel,
       ];
 }
 

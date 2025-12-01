@@ -352,6 +352,7 @@ class PieChartPainter extends BaseChartPainter<PieChartData> {
   /// Calculates layout of overlaying elements, includes:
   /// - title text
   /// - badge widget positions
+  /// - external labels with leader lines
   @visibleForTesting
   void drawTexts(
     BuildContext context,
@@ -392,10 +393,21 @@ class PieChartPainter extends BaseChartPainter<PieChartData> {
                 (centerRadius + (section.radius * percentageOffset)),
           );
 
-      final sectionCenterOffsetTitle =
-          sectionCenter(section.titlePositionPercentageOffset);
-
-      if (section.showTitle) {
+      // Draw external label with leader line if enabled
+      if (section.externalLabel.enabled) {
+        _drawExternalLabel(
+          context,
+          canvasWrapper,
+          holder,
+          section,
+          sectionCenterAngle,
+          centerRadius,
+          center,
+        );
+      } else if (section.showTitle) {
+        // Draw internal title if external label is not enabled
+        final sectionCenterOffsetTitle =
+            sectionCenter(section.titlePositionPercentageOffset);
         final span = TextSpan(
           style: Utils().getThemeAwareTextStyle(context, section.titleStyle),
           text: section.title,
@@ -415,6 +427,179 @@ class PieChartPainter extends BaseChartPainter<PieChartData> {
       }
 
       tempAngle += sweepAngle;
+    }
+  }
+
+  /// Draws an external label with leader line for a section
+  void _drawExternalLabel(
+    BuildContext context,
+    CanvasWrapper canvasWrapper,
+    PaintHolder<PieChartData> holder,
+    PieChartSectionData section,
+    double sectionCenterAngle,
+    double centerRadius,
+    Offset center,
+  ) {
+    final config = section.externalLabel;
+    final outerRadius = centerRadius + section.radius;
+
+    // Calculate the point on the pie edge
+    final edgePoint = center +
+        Offset(
+          math.cos(Utils().radians(sectionCenterAngle)) * outerRadius,
+          math.sin(Utils().radians(sectionCenterAngle)) * outerRadius,
+        );
+
+    // Determine if label should be on left or right side
+    final isLeftSide = sectionCenterAngle > 90 && sectionCenterAngle < 270;
+
+    // Draw leader line
+    final linePaint = Paint()
+      ..color = config.leaderLineColor ?? section.color
+      ..strokeWidth = config.leaderLineWidth
+      ..style = PaintingStyle.stroke;
+
+    if (config.leaderLineStyle == LeaderLineStyle.elbow) {
+      // Calculate the bend point (where the line becomes horizontal)
+      final bendPoint = center +
+          Offset(
+            math.cos(Utils().radians(sectionCenterAngle)) *
+                (outerRadius + config.leaderLineLength),
+            math.sin(Utils().radians(sectionCenterAngle)) *
+                (outerRadius + config.leaderLineLength),
+          );
+
+      // Calculate the horizontal end point
+      final horizontalDirection = isLeftSide ? -1.0 : 1.0;
+      final horizontalEndPoint = Offset(
+        bendPoint.dx + (config.horizontalLineLength * horizontalDirection),
+        bendPoint.dy,
+      );
+
+      // Draw the elbow line (diagonal + horizontal)
+      final path = Path()
+        ..moveTo(edgePoint.dx, edgePoint.dy)
+        ..lineTo(bendPoint.dx, bendPoint.dy)
+        ..lineTo(horizontalEndPoint.dx, horizontalEndPoint.dy);
+      canvasWrapper.drawPath(path, linePaint);
+
+      // Calculate label position next to horizontal line
+      final labelOffset = Offset(
+        horizontalEndPoint.dx + (config.labelDistance * horizontalDirection),
+        horizontalEndPoint.dy,
+      );
+
+      // Draw label text
+      final span = TextSpan(
+        style: Utils().getThemeAwareTextStyle(context, section.titleStyle),
+        text: section.title,
+      );
+      final tp = TextPainter(
+        text: span,
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
+        textScaler: holder.textScaler,
+      )..layout();
+
+      // Adjust label position based on side
+      final adjustedOffset = isLeftSide
+          ? labelOffset - Offset(tp.width, tp.height / 2)
+          : labelOffset - Offset(0, tp.height / 2);
+
+      canvasWrapper.drawText(tp, adjustedOffset);
+    } else if (config.leaderLineStyle == LeaderLineStyle.curved) {
+      // Calculate the end point of the leader line
+      final lineEndPoint = center +
+          Offset(
+            math.cos(Utils().radians(sectionCenterAngle)) *
+                (outerRadius + config.leaderLineLength),
+            math.sin(Utils().radians(sectionCenterAngle)) *
+                (outerRadius + config.leaderLineLength),
+          );
+
+      final controlPoint = center +
+          Offset(
+            math.cos(Utils().radians(sectionCenterAngle)) *
+                (outerRadius +
+                    config.leaderLineLength * config.curveControlPoint1),
+            math.sin(Utils().radians(sectionCenterAngle)) *
+                (outerRadius +
+                    config.leaderLineLength * config.curveControlPoint2),
+          );
+      final path = Path()
+        ..moveTo(edgePoint.dx, edgePoint.dy)
+        ..quadraticBezierTo(
+          controlPoint.dx,
+          controlPoint.dy,
+          lineEndPoint.dx,
+          lineEndPoint.dy,
+        );
+      canvasWrapper.drawPath(path, linePaint);
+
+      // Draw label text
+      final span = TextSpan(
+        style: Utils().getThemeAwareTextStyle(context, section.titleStyle),
+        text: section.title,
+      );
+      final tp = TextPainter(
+        text: span,
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
+        textScaler: holder.textScaler,
+      )..layout();
+
+      // Calculate direction vector from line end point
+      final directionX = math.cos(Utils().radians(sectionCenterAngle));
+      final directionY = math.sin(Utils().radians(sectionCenterAngle));
+
+      // Calculate label center position with consistent distance from line end
+      final labelCenter = Offset(
+        lineEndPoint.dx + directionX * (config.labelDistance + tp.width / 2),
+        lineEndPoint.dy + directionY * (config.labelDistance + tp.height / 2),
+      );
+
+      // Center the label at the calculated position
+      final adjustedOffset = labelCenter - Offset(tp.width / 2, tp.height / 2);
+
+      canvasWrapper.drawText(tp, adjustedOffset);
+    } else {
+      // Straight line style
+      final lineEndPoint = center +
+          Offset(
+            math.cos(Utils().radians(sectionCenterAngle)) *
+                (outerRadius + config.leaderLineLength),
+            math.sin(Utils().radians(sectionCenterAngle)) *
+                (outerRadius + config.leaderLineLength),
+          );
+
+      canvasWrapper.drawLine(edgePoint, lineEndPoint, linePaint);
+
+      // Draw label text
+      final span = TextSpan(
+        style: Utils().getThemeAwareTextStyle(context, section.titleStyle),
+        text: section.title,
+      );
+      final tp = TextPainter(
+        text: span,
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
+        textScaler: holder.textScaler,
+      )..layout();
+
+      // Calculate direction vector from line end point
+      final directionX = math.cos(Utils().radians(sectionCenterAngle));
+      final directionY = math.sin(Utils().radians(sectionCenterAngle));
+
+      // Calculate label center position with consistent distance from line end
+      final labelCenter = Offset(
+        lineEndPoint.dx + directionX * (config.labelDistance + tp.width / 2),
+        lineEndPoint.dy + directionY * (config.labelDistance + tp.height / 2),
+      );
+
+      // Center the label at the calculated position
+      final adjustedOffset = labelCenter - Offset(tp.width / 2, tp.height / 2);
+
+      canvasWrapper.drawText(tp, adjustedOffset);
     }
   }
 

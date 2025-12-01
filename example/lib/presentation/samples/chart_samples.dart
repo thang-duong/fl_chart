@@ -1,4 +1,5 @@
 import 'package:fl_chart_app/presentation/samples/candlestick/candlestick_chart_sample1.dart';
+import 'package:fl_chart_app/presentation/samples/pie/pie_chart_sample4.dart';
 import 'package:fl_chart_app/util/app_helper.dart';
 
 import 'bar/bar_chart_sample1.dart';
@@ -61,6 +62,7 @@ class ChartSamples {
       PieChartSample(1, (context) => const PieChartSample1()),
       PieChartSample(2, (context) => const PieChartSample2()),
       PieChartSample(3, (context) => const PieChartSample3()),
+      PieChartSample(4, (context) => const PieChartSample4()),
     ],
     ChartType.scatter: [
       ScatterChartSample(1, (context) => ScatterChartSample1()),
