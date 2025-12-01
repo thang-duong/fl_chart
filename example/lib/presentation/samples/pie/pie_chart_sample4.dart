@@ -15,41 +15,28 @@ class _PieChartSample4State extends State<PieChartSample4> {
   Widget build(BuildContext context) {
     return AspectRatio(
       aspectRatio: 1,
-      child: Card(
-        child: Column(
-          children: [
-            const Text(
-              'Pie Chart with External Labels',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+      child: Center(
+        child: PieChart(
+          PieChartData(
+            pieTouchData: PieTouchData(
+              touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                setState(() {
+                  if (!event.isInterestedForInteractions ||
+                      pieTouchResponse == null ||
+                      pieTouchResponse.touchedSection == null) {
+                    touchedIndex = -1;
+                    return;
+                  }
+                  touchedIndex =
+                      pieTouchResponse.touchedSection!.touchedSectionIndex;
+                });
+              },
             ),
-            Expanded(
-              child: PieChart(
-                PieChartData(
-                  pieTouchData: PieTouchData(
-                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                      setState(() {
-                        if (!event.isInterestedForInteractions ||
-                            pieTouchResponse == null ||
-                            pieTouchResponse.touchedSection == null) {
-                          touchedIndex = -1;
-                          return;
-                        }
-                        touchedIndex = pieTouchResponse
-                            .touchedSection!.touchedSectionIndex;
-                      });
-                    },
-                  ),
-                  borderData: FlBorderData(show: false),
-                  sectionsSpace: 0,
-                  centerSpaceRadius: 0,
-                  sections: showingSections(),
-                ),
-              ),
-            ),
-          ],
+            borderData: FlBorderData(show: false),
+            sectionsSpace: 0,
+            centerSpaceRadius: 0,
+            sections: showingSections(),
+          ),
         ),
       ),
     );
